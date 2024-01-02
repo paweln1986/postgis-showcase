@@ -1,0 +1,16 @@
+@import 'npm:leaflet/dist/leaflet.css';
+@import 'npm:leaflet-draw/dist/leaflet.draw.css';
+@import 'npm:bootstrap/dist/css/bootstrap.min.css';
+
+#map1 { height: 880px; }
+
+
+.scope_component {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto;
+    column-gap: 10px;
+    row-gap: 15px;
+    margin-left: 10em;
+    margin-right: 10em;
+}
