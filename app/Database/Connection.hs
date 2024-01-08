@@ -12,21 +12,21 @@ import Hasql.Session (Session)
 import Prelude hiding (Reader, ask)
 
 newtype DatabaseError = DatabaseError
-    { message :: Text
-    }
-    deriving stock (Show)
+  { message :: Text
+  }
+  deriving stock (Show)
 
 instance Exception DatabaseError
 
 data DatabaseConnection :: Effect where
-    RunStatement :: Session a -> DatabaseConnection m a
+  RunStatement :: Session a -> DatabaseConnection m a
 
 makeEffect ''DatabaseConnection
 
 handleDatabaseConnection :: (Reader Pool :> es, IOE :> es, Error DatabaseError :> es) => Eff (DatabaseConnection : es) a -> Eff es a
 handleDatabaseConnection = interpret $ \_ (RunStatement session) -> do
-    pool <- ask
-    res <- liftIO $ use pool session
-    case res of
-        Left err -> throwError $ DatabaseError $ show err
-        Right success -> pure success
+  pool <- ask
+  res <- liftIO $ use pool session
+  case res of
+    Left err -> throwError $ DatabaseError $ show err
+    Right success -> pure success

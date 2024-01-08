@@ -1,72 +1,45 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Scope.Queries (selectScope, selectAllScope, insertScope) where
 
-import Contravariant.Extras (contrazip3)
-import Data.Aeson (FromJSON, ToJSON, encode)
-import Data.Aeson.Decoding qualified as Aeson
+import Data.Aeson (encode)
 import Data.Geospatial (GeoPolygon)
+import Data.Profunctor (Profunctor (dimap, lmap))
 import Data.Vector (Vector)
-import Hasql.Decoders (refine)
-import Hasql.Decoders qualified as Decoders
-import Hasql.Decoders qualified as HD
-import Hasql.Encoders (param)
-import Hasql.Encoders qualified as Encoders
 import Hasql.Session (statement)
 import Hasql.Session qualified as Session
-import Hasql.Statement (Statement (..))
-import Scope.Data (ScopeDescription (ScopeDescription, unScopeDescription), ScopeId (..), ScopeName (ScopeName, unScopeName))
+import Hasql.Statement (Statement (..), refineResult)
+import Hasql.TH (singletonStatement, vectorStatement)
 import Scope.Http.Payloads (Scope (..))
+import Utils.Aeson (encodeJson)
+import Utils.Data (ScopeDescription (ScopeDescription), ScopeId (ScopeId), ScopeName (ScopeName))
 
 insertScope :: (ScopeName, Maybe ScopeDescription, GeoPolygon) -> Session.Session ScopeId
-insertScope params = statement params $ Statement sql encoder decoder True
- where
-  sql = "insert into scope(scope_name, scoee_description, scope_polygon) values ($1, $2, ST_GeomFromGeoJSON($3)) returning scope_id"
-  decoder = Decoders.singleRow $ Decoders.column $ Decoders.nonNullable scopeIdDecoder
-  encoder = contrazip3 scopeNameEncoder scopeDescriptionEncoder geoPolygonEncoder
+insertScope params = statement params (dimap toParameters coerce sql)
+  where
+    sql =
+      [singletonStatement|
+        insert into scope (scope_name, scope_description, scope_polygon) 
+        values ($1 :: text, $2 :: text?, ST_GeomFromGeoJSON($3 :: text)) 
+        returning scope_id :: int8
+      |]
+    toParameters (scopeName, scopeDescription, geoPolygon) =
+      (coerce scopeName, coerce scopeDescription, decodeUtf8 $ encode geoPolygon)
 
 selectScope :: Statement ScopeId (Vector GeoPolygon)
-selectScope = Statement sql scopeIdEncoder decoder True
- where
-  sql = "select ST_AsGeoJSON(scope_polygon) from scope where scope_id = $1"
-  decoder = Decoders.rowVector row
-  row = Decoders.column (Decoders.nonNullable geometry)
+selectScope = lmap coerce $ refineResult (mapM encodeJson) sql
+  where
+    sql =
+      [vectorStatement|
+        select ST_AsGeoJSON(scope_polygon)::text from scope where scope_id = $1 :: int8
+      |]
 
 selectAllScope :: Session.Session (Vector Scope)
-selectAllScope = statement () $ Statement sql Encoders.noParams decoder True
- where
-  sql = "select scope_id, scope_name, scoee_description, ST_AsGeoJSON(scope_polygon) from scope"
-  decoder = Decoders.rowVector row
-  row =
-    Scope
-      <$> Decoders.column (Decoders.nonNullable scopeIdDecoder)
-      <*> Decoders.column (Decoders.nonNullable scopeNameDecoder)
-      <*> Decoders.column (Decoders.nullable scopeDescriptionDecoder)
-      <*> Decoders.column (Decoders.nonNullable geometry)
-
--- saveScope :: Statement (ScopeName, )
-
-scopeIdEncoder :: Encoders.Params ScopeId
-scopeIdEncoder = fromIntegral . unScopeId >$< param (Encoders.nonNullable Encoders.int8)
-
-scopeNameEncoder :: Encoders.Params ScopeName
-scopeNameEncoder = unScopeName >$< param (Encoders.nonNullable Encoders.text)
-
-scopeDescriptionEncoder :: Encoders.Params (Maybe ScopeDescription)
-scopeDescriptionEncoder = param (Encoders.nullable (unScopeDescription >$< Encoders.text))
-
-geoPolygonEncoder :: Encoders.Params GeoPolygon
-geoPolygonEncoder = param (Encoders.nonNullable geometryEV)
-
-scopeIdDecoder :: HD.Value ScopeId
-scopeIdDecoder = ScopeId . fromIntegral <$> HD.int8
-
-scopeNameDecoder :: HD.Value ScopeName
-scopeNameDecoder = ScopeName <$> HD.text
-
-scopeDescriptionDecoder :: HD.Value ScopeDescription
-scopeDescriptionDecoder = ScopeDescription <$> HD.text
-
-geometry :: (FromJSON a) => HD.Value a
-geometry = refine (first toText) $ Aeson.eitherDecodeStrict . encodeUtf8 <$> HD.text
-
-geometryEV :: (ToJSON a) => Encoders.Value a
-geometryEV = (decodeUtf8 . encode) >$< Encoders.text
+selectAllScope = statement () $ refineResult (mapM toScope) sql
+  where
+    sql =
+      [vectorStatement|
+        select scope_id::int8, scope_name::text, scope_description::text?, ST_AsGeoJSON(scope_polygon)::text from scope
+      |]
+    toScope (scopeId, name, description, geojson) =
+      Scope (coerce scopeId) (coerce name) (coerce description) <$> encodeJson geojson

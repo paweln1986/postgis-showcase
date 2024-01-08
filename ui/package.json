@@ -10,9 +10,11 @@
     "@parcel/transformer-sass": "^2.10.3",
     "parcel": "2.10.3",
     "purescript": "^0.15.13",
+    "purty": "^7.0.0",
     "spago": "^0.93.20"
   },
   "scripts": {
+    "format": "purty --write src",
     "build": "spago build",
     "test": "spago test",
     "serve": "parcel dev/index.html --open",

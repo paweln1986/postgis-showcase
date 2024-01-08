@@ -2,15 +2,14 @@
 @import 'npm:leaflet-draw/dist/leaflet.draw.css';
 @import 'npm:bootstrap/dist/css/bootstrap.min.css';
 
-#map1 { height: 880px; }
+.main {
+    height: 100vh;
+    margin: 10px;
+}
 
+#map1 { height: 100%; }
+#scope_map { height: 100%; }
 
-.scope_component {
-    display: grid;
-    grid-template-columns: auto;
-    grid-template-rows: auto;
-    column-gap: 10px;
-    row-gap: 15px;
-    margin-left: 10em;
-    margin-right: 10em;
+.row {
+    height: 50vh;
 }
