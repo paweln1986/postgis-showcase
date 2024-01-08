@@ -1,0 +1,15 @@
+@import 'npm:leaflet/dist/leaflet.css';
+@import 'npm:leaflet-draw/dist/leaflet.draw.css';
+@import 'npm:bootstrap/dist/css/bootstrap.min.css';
+
+.main {
+    height: 100vh;
+    margin: 10px;
+}
+
+#map1 { height: 100%; }
+#scope_map { height: 100%; }
+
+.row {
+    height: 50vh;
+}

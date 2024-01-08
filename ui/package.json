@@ -1,0 +1,23 @@
+{
+  "private": true,
+  "dependencies": {
+    "bootstrap": "^5.3.2",
+    "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
+    "leaflet-semicircle": "^2.0.4"
+  },
+  "devDependencies": {
+    "@parcel/transformer-sass": "^2.10.3",
+    "parcel": "2.10.3",
+    "purescript": "^0.15.13",
+    "purty": "^7.0.0",
+    "spago": "^0.93.20"
+  },
+  "scripts": {
+    "format": "purty --write src",
+    "build": "spago build",
+    "test": "spago test",
+    "serve": "parcel dev/index.html --open",
+    "build-prod": "rm -rf prod && mkdir -p prod && cp dev/index.html prod/ && spago bundle-app --to prod/index.js && parcel build prod/index.html"
+  }
+}
